@@ -22,8 +22,11 @@ dependencies {
     implementation("io.micronaut:micronaut-http-client")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
 
-    // TON blockchain - ton4j library for wallet operations (no native libs needed)
-    implementation("io.github.neodix42:smartcontract:0.9.0")
+    // TON blockchain - official ton4j library
+    // https://github.com/ton-blockchain/ton4j
+    implementation("org.ton.ton4j:toncenter:1.3.5")
+    implementation("org.ton.ton4j:smartcontract:1.3.5")
+    implementation("org.ton.ton4j:cell:1.3.5")
 
     // Data JDBC
     implementation("io.micronaut.data:micronaut-data-jdbc")
