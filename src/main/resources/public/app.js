@@ -306,10 +306,18 @@ function selectSide(side) {
 
 async function handleFlip() {
     const stakeInput = document.getElementById('stake-input');
-    const stake = parseInt(stakeInput.value);
+    const stakeTon = parseFloat(stakeInput.value);
     
-    if (!stake || stake <= 0) {
+    if (!stakeTon || stakeTon <= 0) {
         alert('Please enter a valid stake');
+        return;
+    }
+    
+    // Convert TON to nano (1 TON = 1,000,000,000 nano)
+    const stakeNano = Math.floor(stakeTon * 1_000_000_000);
+    
+    if (stakeNano < 1_000_000) { // Minimum 0.001 TON
+        alert('Minimum stake is 0.001 TON');
         return;
     }
     
@@ -327,7 +335,7 @@ async function handleFlip() {
             method: 'POST',
             body: JSON.stringify({
                 side: state.selectedSide,
-                stakeNano: stake
+                stakeNano: stakeNano
             })
         });
         
@@ -338,8 +346,10 @@ async function handleFlip() {
         
         resultDiv.classList.remove('hidden', 'coinflip__result--win', 'coinflip__result--lose');
         resultDiv.classList.add(result.win ? 'coinflip__result--win' : 'coinflip__result--lose');
+        
+        // Display result in TON (user-friendly format)
         resultDiv.querySelector('.coinflip__result-text').textContent = 
-            result.win ? `🎉 Won ${formatTonCompact(stake)} TON!` : `😢 Lost ${formatTonCompact(stake)} TON`;
+            result.win ? `🎉 Won ${stakeTon} TON!` : `😢 Lost ${stakeTon} TON`;
         
         await loadState();
         
