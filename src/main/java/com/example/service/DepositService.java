@@ -35,6 +35,7 @@ public class DepositService {
         }
 
         DepositEntity deposit = new DepositEntity(userId, "TON", amountNano, STATUS_PENDING);
+        deposit.setCreatedAt(OffsetDateTime.now());
         DepositEntity saved = depositRepository.save(deposit);
         return saved.getId();
     }
@@ -113,6 +114,7 @@ public class DepositService {
         // Save the deposit record as CONFIRMED
         DepositEntity deposit = new DepositEntity(userId, assetStr, amount, STATUS_CONFIRMED);
         deposit.setTxHash(txHash);
+        deposit.setCreatedAt(OffsetDateTime.now());
         deposit.setConfirmedAt(OffsetDateTime.now());
         return depositRepository.save(deposit);
     }

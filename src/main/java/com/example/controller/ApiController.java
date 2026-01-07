@@ -13,6 +13,8 @@ import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.*;
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 
 import java.util.List;
 import java.util.UUID;
@@ -115,6 +117,7 @@ public class ApiController {
     }
 
     @Post("/deposit/claim")
+    @ExecuteOn(TaskExecutors.BLOCKING)
     public HttpResponse<DepositClaimResponse> claimDeposit(HttpRequest<?> request, @Body DepositClaimRequest body) {
         long telegramUserId = telegramUserHelper.requireTelegramUserId(request);
         UUID userId = userService.getOrCreateUserId(telegramUserId);
