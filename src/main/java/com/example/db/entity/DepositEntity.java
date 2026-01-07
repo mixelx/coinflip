@@ -29,6 +29,9 @@ public class DepositEntity {
     @MappedProperty("tx_hash")
     private String txHash;
 
+    @MappedProperty("from_address")
+    private String fromAddress;
+
     @MappedProperty("created_at")
     private OffsetDateTime createdAt;
 
@@ -91,6 +94,14 @@ public class DepositEntity {
 
     public void setTxHash(String txHash) {
         this.txHash = txHash;
+    }
+
+    public String getFromAddress() {
+        return fromAddress;
+    }
+
+    public void setFromAddress(String fromAddress) {
+        this.fromAddress = fromAddress;
     }
 
     public OffsetDateTime getCreatedAt() {

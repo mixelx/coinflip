@@ -485,45 +485,60 @@ async function handleDepositTon() {
     }
 }
 
-// Claim deposit via API
+// Claim deposit via API (includes fromAddress for verification)
 async function claimDeposit(amountNano) {
+    // Get wallet address for source verification
+    const fromAddress = currentWalletAddress || null;
+    
     const response = await fetch('/api/deposit/claim', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-Tg-UserId': telegramUserId.toString()
         },
-        body: JSON.stringify({ amountNano })
+        body: JSON.stringify({ 
+            amountNano,
+            fromAddress 
+        })
     });
     
     return response.json();
 }
 
-// Poll deposit status until confirmed or timeout
+// Verify deposit via API (actively checks blockchain)
+async function verifyDeposit(depositId) {
+    const response = await fetch('/api/deposit/verify', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Tg-UserId': telegramUserId.toString()
+        },
+        body: JSON.stringify({ depositId })
+    });
+    
+    return response.json();
+}
+
+// Poll deposit verification until confirmed or timeout
 async function pollDepositStatus(depositId, maxAttempts = 30, intervalMs = 2000) {
     for (let i = 0; i < maxAttempts; i++) {
         try {
-            const response = await fetch(`/api/deposit/status?depositId=${depositId}`, {
-                headers: {
-                    'X-Tg-UserId': telegramUserId.toString()
-                }
-            });
+            // Use verify endpoint which actively checks blockchain
+            const result = await verifyDeposit(depositId);
+            console.log(`Verify ${i + 1}/${maxAttempts}: ${result.status}`);
             
-            const status = await response.json();
-            console.log(`Poll ${i + 1}/${maxAttempts}: ${status.status}`);
-            
-            if (status.status === 'CONFIRMED') {
+            if (result.status === 'CONFIRMED') {
                 return true;
             }
             
-            if (status.status === 'REJECTED') {
+            if (result.status === 'REJECTED') {
                 alert('Deposit was rejected');
                 return false;
             }
             
             await new Promise(resolve => setTimeout(resolve, intervalMs));
         } catch (error) {
-            console.error('Poll error:', error);
+            console.error('Verify error:', error);
         }
     }
     

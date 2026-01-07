@@ -41,7 +41,7 @@ app:
   ton:
     network: "mainnet"
     verify:
-      lookback-tx-count: 20
+      lookback-tx-count: 150
   toncenter:
     base-url: "https://toncenter.com/api/v2"
     api-key: "7fac53bbccd5e782a2609e568ae0c40f3ceaece37a5fecca30457d478c7bd1af"
