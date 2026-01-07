@@ -36,6 +36,7 @@ public class AppConfig {
     @ConfigurationProperties("deposit")
     public static class DepositConfig {
         private String tonAddress;
+        private String usdtJettonMaster;
 
         public String getTonAddress() {
             return tonAddress;
@@ -43,6 +44,14 @@ public class AppConfig {
 
         public void setTonAddress(String tonAddress) {
             this.tonAddress = tonAddress;
+        }
+
+        public String getUsdtJettonMaster() {
+            return usdtJettonMaster;
+        }
+
+        public void setUsdtJettonMaster(String usdtJettonMaster) {
+            this.usdtJettonMaster = usdtJettonMaster;
         }
     }
 

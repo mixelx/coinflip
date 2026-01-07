@@ -34,16 +34,17 @@ public class DepositService {
      * Create a pending deposit (before on-chain confirmation)
      */
     @Transactional
-    public UUID createPendingDeposit(UUID userId, long amountNano, String fromAddress) {
-        LOG.debug(">>> createPendingDeposit: userId={}, amountNano={}, fromAddress={}", 
-                userId, amountNano, fromAddress);
+    public UUID createPendingDeposit(UUID userId, long amount, String fromAddress, String asset) {
+        LOG.debug(">>> createPendingDeposit: userId={}, amount={}, fromAddress={}, asset={}", 
+                userId, amount, fromAddress, asset);
         
-        if (amountNano <= 0) {
-            LOG.warn("createPendingDeposit: invalid amount {} <= 0", amountNano);
+        if (amount <= 0) {
+            LOG.warn("createPendingDeposit: invalid amount {} <= 0", amount);
             throw new BadRequestException("Amount must be positive");
         }
 
-        DepositEntity deposit = new DepositEntity(userId, "TON", amountNano, STATUS_PENDING);
+        String normalizedAsset = (asset == null || asset.isBlank()) ? "TON" : asset.toUpperCase();
+        DepositEntity deposit = new DepositEntity(userId, normalizedAsset, amount, STATUS_PENDING);
         deposit.setCreatedAt(OffsetDateTime.now());
         
         if (fromAddress != null && !fromAddress.isBlank()) {
@@ -51,11 +52,19 @@ public class DepositService {
             LOG.debug("Set fromAddress: {}", fromAddress.trim());
         }
         
-        LOG.debug("Saving pending deposit to database...");
+        LOG.debug("Saving pending {} deposit to database...", normalizedAsset);
         DepositEntity saved = depositRepository.save(deposit);
         
         LOG.debug("<<< createPendingDeposit: created deposit id={}", saved.getId());
         return saved.getId();
+    }
+    
+    /**
+     * Create a pending deposit (default to TON for backward compatibility)
+     */
+    @Transactional
+    public UUID createPendingDeposit(UUID userId, long amount, String fromAddress) {
+        return createPendingDeposit(userId, amount, fromAddress, "TON");
     }
 
     /**

@@ -4,6 +4,7 @@ import com.example.config.AppConfig;
 import com.example.db.entity.DepositEntity;
 import com.example.db.repo.DepositRepository;
 import com.example.exception.BadRequestException;
+import com.example.ton.JettonTransfer;
 import com.example.ton.TonAddressNormalizer;
 import com.example.ton.TonTransaction;
 import com.example.ton.ToncenterClient;
@@ -56,15 +57,21 @@ public class DepositClaimService {
     /**
      * Claim a deposit by creating a PENDING record and attempting verification once.
      */
-    public ClaimResult claimDeposit(UUID userId, long amountNano, String fromAddress) {
-        LOG.debug(">>> claimDeposit called: userId={}, amountNano={}, fromAddress={}", 
-                userId, amountNano, fromAddress);
+    public ClaimResult claimDeposit(UUID userId, long amount, String fromAddress, String asset) {
+        LOG.debug(">>> claimDeposit called: userId={}, amount={}, fromAddress={}, asset={}", 
+                userId, amount, fromAddress, asset);
+        
+        // Validate asset
+        String normalizedAsset = (asset == null || asset.isBlank()) ? "TON" : asset.toUpperCase();
+        if (!normalizedAsset.equals("TON") && !normalizedAsset.equals("USDT")) {
+            throw new BadRequestException("Invalid asset: " + asset + ". Must be TON or USDT");
+        }
         
         // Create pending deposit
-        LOG.debug("Creating pending deposit in DB...");
-        UUID depositId = depositService.createPendingDeposit(userId, amountNano, fromAddress);
-        LOG.info("Created pending deposit {} for user {} amount {} fromAddress {}",
-                depositId, userId, amountNano, fromAddress);
+        LOG.debug("Creating pending deposit in DB for asset {}...", normalizedAsset);
+        UUID depositId = depositService.createPendingDeposit(userId, amount, fromAddress, normalizedAsset);
+        LOG.info("Created pending deposit {} for user {} amount {} {} fromAddress {}",
+                depositId, userId, amount, normalizedAsset, fromAddress);
 
         // Try to verify immediately (in case transaction is already visible)
         LOG.debug("Attempting immediate verification for deposit {}", depositId);
@@ -97,8 +104,8 @@ public class DepositClaimService {
                     return new BadRequestException("Deposit not found: " + depositId);
                 });
         
-        LOG.debug("Deposit loaded: id={}, userId={}, amount={}, status={}, fromAddress={}, txHash={}",
-                deposit.getId(), deposit.getUserId(), deposit.getAmount(), 
+        LOG.debug("Deposit loaded: id={}, userId={}, amount={}, asset={}, status={}, fromAddress={}, txHash={}",
+                deposit.getId(), deposit.getUserId(), deposit.getAmount(), deposit.getAsset(),
                 deposit.getStatus(), deposit.getFromAddress(), deposit.getTxHash());
 
         // If already confirmed, return current state
@@ -114,6 +121,13 @@ public class DepositClaimService {
             );
         }
 
+        // Route to appropriate verification method based on asset
+        String asset = deposit.getAsset();
+        if ("USDT".equals(asset)) {
+            return verifyUsdtDeposit(deposit);
+        }
+
+        // Default: TON deposit verification
         // Get config
         String depositAddress = appConfig.getDeposit().getTonAddress();
         int lookbackCount = appConfig.getTon().getVerify().getLookbackTxCount();
@@ -318,6 +332,130 @@ public class DepositClaimService {
         LOG.debug("=== TRANSACTION SCAN END: NO MATCH ===");
         LOG.debug("Stats: {} dest matches, {} amount matches, {} source matches out of {} transactions",
                 matchedDestCount, matchedAmountCount, matchedSourceCount, transactions.size());
+
+        return Optional.empty();
+    }
+
+    /**
+     * Verify USDT (Jetton) deposit by checking Jetton transfers.
+     * Uses Toncenter API to find incoming Jetton transfers.
+     */
+    private VerifyResult verifyUsdtDeposit(DepositEntity deposit) {
+        LOG.info("=== VERIFYING USDT DEPOSIT {} ===", deposit.getId());
+        LOG.info("Expected: amount={} micro, fromAddress={}", deposit.getAmount(), deposit.getFromAddress());
+
+        String depositAddress = appConfig.getDeposit().getTonAddress();
+        String usdtJettonMaster = appConfig.getDeposit().getUsdtJettonMaster();
+        
+        if (usdtJettonMaster == null || usdtJettonMaster.isBlank()) {
+            LOG.error("USDT Jetton Master address not configured");
+            BalanceDto balance = balanceService.getBalance(deposit.getUserId());
+            return new VerifyResult(STATUS_PENDING, null, balance.tonNano());
+        }
+
+        LOG.debug("USDT Jetton Master: {}, Deposit Address: {}", usdtJettonMaster, depositAddress);
+
+        // Fetch Jetton transfers to our deposit address
+        List<JettonTransfer> transfers;
+        try {
+            transfers = toncenterClient.getJettonTransfers(depositAddress, usdtJettonMaster, 50);
+            LOG.debug("Fetched {} USDT Jetton transfers", transfers.size());
+        } catch (Exception e) {
+            LOG.error("Failed to fetch Jetton transfers: {}", e.getMessage());
+            BalanceDto balance = balanceService.getBalance(deposit.getUserId());
+            return new VerifyResult(STATUS_PENDING, null, balance.tonNano());
+        }
+
+        // Find matching transfer
+        Optional<JettonTransfer> matchingTransfer = findMatchingJettonTransfer(
+                transfers,
+                deposit.getAmount(),
+                deposit.getFromAddress()
+        );
+
+        if (matchingTransfer.isPresent()) {
+            JettonTransfer transfer = matchingTransfer.get();
+            String txHash = transfer.transactionHash();
+
+            LOG.info("!!! USDT MATCH FOUND !!! Transaction {} matches deposit {}", txHash, deposit.getId());
+
+            // Check if already used
+            if (depositRepository.findByTxHash(txHash).isPresent()) {
+                LOG.warn("Transaction {} already used, cannot confirm deposit {}", txHash, deposit.getId());
+                BalanceDto balance = balanceService.getBalance(deposit.getUserId());
+                return new VerifyResult(STATUS_PENDING, null, balance.tonNano());
+            }
+
+            // Confirm the deposit
+            deposit.setStatus(STATUS_CONFIRMED);
+            deposit.setTxHash(txHash);
+            deposit.setConfirmedAt(OffsetDateTime.now());
+            depositRepository.update(deposit);
+
+            // Credit the USDT balance
+            balanceService.credit(deposit.getUserId(), Asset.USDT, deposit.getAmount());
+
+            BalanceDto balance = balanceService.getBalance(deposit.getUserId());
+            LOG.info("=== USDT DEPOSIT {} CONFIRMED === txHash={}, newUsdtBalance={} micro",
+                    deposit.getId(), txHash, balance.usdtMicro());
+
+            return new VerifyResult(STATUS_CONFIRMED, txHash, balance.tonNano());
+        }
+
+        LOG.info("No matching USDT transfer found for deposit {}, status remains PENDING", deposit.getId());
+        BalanceDto balance = balanceService.getBalance(deposit.getUserId());
+        return new VerifyResult(STATUS_PENDING, null, balance.tonNano());
+    }
+
+    /**
+     * Find a Jetton transfer matching the deposit criteria.
+     */
+    private Optional<JettonTransfer> findMatchingJettonTransfer(
+            List<JettonTransfer> transfers,
+            long expectedAmount,
+            String expectedFromAddress
+    ) {
+        String expectedFromRaw = null;
+        if (expectedFromAddress != null && !expectedFromAddress.isBlank()) {
+            try {
+                expectedFromRaw = TonAddressNormalizer.toRaw(expectedFromAddress);
+            } catch (IllegalArgumentException e) {
+                LOG.warn("Invalid fromAddress for USDT: {}", expectedFromAddress);
+            }
+        }
+
+        LOG.debug("Searching for USDT transfer: amount={}, fromRaw={}", expectedAmount, expectedFromRaw);
+
+        for (int i = 0; i < transfers.size(); i++) {
+            JettonTransfer transfer = transfers.get(i);
+            boolean shouldLog = i < 10;
+
+            boolean amountMatches = transfer.amount() == expectedAmount;
+            
+            boolean sourceMatches = true;
+            if (expectedFromRaw != null && transfer.sourceAddress() != null) {
+                try {
+                    String sourceRaw = TonAddressNormalizer.toRaw(transfer.sourceAddress());
+                    sourceMatches = sourceRaw.equals(expectedFromRaw);
+                } catch (IllegalArgumentException e) {
+                    sourceMatches = true;
+                }
+            }
+
+            if (shouldLog) {
+                LOG.debug("USDT TX[{}]: hash={}, amount={}, source={} | amountMatch={}, sourceMatch={}",
+                        i, transfer.transactionHash(), transfer.amount(), transfer.sourceAddress(),
+                        amountMatches, sourceMatches);
+            }
+
+            if (amountMatches && sourceMatches) {
+                String txHash = transfer.transactionHash();
+                if (txHash != null && depositRepository.findByTxHash(txHash).isEmpty()) {
+                    LOG.debug("USDT transfer {} is unused, returning as MATCH!", txHash);
+                    return Optional.of(transfer);
+                }
+            }
+        }
 
         return Optional.empty();
     }

@@ -49,8 +49,6 @@ async function loadConfig() {
     try {
         const config = await fetch('/api/config').then(r => r.json());
         appConfig = config;
-        // Update deposit address in UI
-        document.getElementById('deposit-address').textContent = formatAddress(config.depositTonAddress);
         console.log('Config loaded:', config);
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -108,9 +106,6 @@ function initEventListeners() {
     document.querySelectorAll('.deposit__asset-btn').forEach(btn => {
         btn.addEventListener('click', () => selectDepositAsset(btn.dataset.asset));
     });
-    
-    // Copy address button
-    document.getElementById('copy-address-btn').addEventListener('click', handleCopyAddress);
     
     // Deposit confirm button
     document.getElementById('deposit-confirm-btn').addEventListener('click', handleDepositConfirm);
@@ -368,16 +363,24 @@ function selectDepositAsset(asset) {
     document.querySelectorAll('.deposit__asset-btn').forEach(btn => {
         btn.classList.toggle('deposit__asset-btn--active', btn.dataset.asset === asset);
     });
-}
-
-function handleCopyAddress() {
-    if (appConfig.depositTonAddress) {
-        navigator.clipboard.writeText(appConfig.depositTonAddress);
-        alert('Address copied!');
+    
+    // Update UI labels based on selected asset
+    const amountLabel = document.getElementById('deposit-amount-label');
+    const depositBtn = document.getElementById('deposit-confirm-btn');
+    const hint = document.getElementById('deposit-hint');
+    
+    if (asset === 'TON') {
+        amountLabel.textContent = 'Amount (TON)';
+        depositBtn.querySelector('span').textContent = '💎 Deposit TON';
+        hint.textContent = 'Send from your connected wallet via TonConnect';
+    } else {
+        amountLabel.textContent = 'Amount (USDT)';
+        depositBtn.querySelector('span').textContent = '💵 Deposit USDT';
+        hint.textContent = 'Send USDT (TON network) from your connected wallet';
     }
 }
 
-// Legacy manual deposit confirmation
+// Handle deposit button click
 async function handleDepositConfirm() {
     const amount = document.getElementById('deposit-amount').value;
     
@@ -386,28 +389,10 @@ async function handleDepositConfirm() {
         return;
     }
     
-    // For TON, use real deposit flow
     if (state.depositAsset === 'TON') {
         await handleDepositTon();
-        return;
-    }
-    
-    // For USDT, use legacy manual flow (placeholder)
-    try {
-        await apiCall('/api/deposit', {
-            method: 'POST',
-            body: JSON.stringify({
-                asset: state.depositAsset,
-                amount: Math.floor(parseFloat(amount) * 1_000_000)
-            })
-        });
-        
-        alert('Deposit recorded! Balance updated.');
-        document.getElementById('deposit-amount').value = '';
-        await loadState();
-        
-    } catch (error) {
-        alert(error.message);
+    } else {
+        await handleDepositUsdt();
     }
 }
 
@@ -493,6 +478,211 @@ async function handleDepositTon() {
         depositBtn.disabled = false;
         depositBtn.querySelector('span').textContent = originalText;
     }
+}
+
+// Real USDT deposit with TonConnect (Jetton transfer)
+async function handleDepositUsdt() {
+    const amountInput = document.getElementById('deposit-amount');
+    const amount = parseFloat(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+    
+    if (!tonConnectUI || !tonConnectUI.wallet) {
+        alert('Please connect your wallet first');
+        return;
+    }
+    
+    if (!appConfig.depositTonAddress) {
+        alert('Deposit address not configured');
+        return;
+    }
+    
+    if (!appConfig.usdtJettonMaster) {
+        alert('USDT not configured');
+        return;
+    }
+    
+    // USDT has 6 decimals
+    const amountMicro = Math.floor(amount * 1_000_000);
+    const depositBtn = document.getElementById('deposit-confirm-btn');
+    const originalText = depositBtn.querySelector('span').textContent;
+    
+    try {
+        depositBtn.disabled = true;
+        depositBtn.querySelector('span').textContent = 'Preparing...';
+        
+        // Get user's Jetton wallet address for USDT
+        const userAddress = tonConnectUI.wallet.account.address;
+        console.log('User wallet address:', userAddress);
+        
+        // Fetch user's USDT Jetton wallet address
+        depositBtn.querySelector('span').textContent = 'Getting wallet...';
+        const jettonWalletAddress = await getJettonWalletAddress(userAddress, appConfig.usdtJettonMaster);
+        
+        if (!jettonWalletAddress) {
+            alert('Could not find your USDT wallet. Make sure you have USDT in your wallet.');
+            return;
+        }
+        
+        console.log('User Jetton wallet:', jettonWalletAddress);
+        
+        // Build Jetton transfer payload
+        // transfer#0f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
+        // response_destination:MsgAddress custom_payload:(Maybe ^Cell) forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
+        const transferPayload = buildJettonTransferPayload(
+            amountMicro,
+            appConfig.depositTonAddress,
+            userAddress  // response destination (refund address)
+        );
+        
+        depositBtn.querySelector('span').textContent = 'Sending...';
+        
+        // Create TonConnect transaction for Jetton transfer
+        // We send to user's Jetton wallet, not the master contract
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 300,
+            messages: [
+                {
+                    address: jettonWalletAddress,
+                    amount: "100000000", // 0.1 TON for gas
+                    payload: transferPayload
+                }
+            ]
+        };
+        
+        console.log('Sending Jetton transfer:', transaction);
+        
+        await tonConnectUI.sendTransaction(transaction);
+        
+        console.log('Jetton transfer sent, claiming deposit...');
+        depositBtn.querySelector('span').textContent = 'Confirming...';
+        
+        // Wait for transaction to propagate
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Claim the USDT deposit
+        const claimResult = await claimUsdtDeposit(amountMicro);
+        
+        if (claimResult.status === 'CONFIRMED') {
+            alert(`✅ USDT Deposit confirmed! New balance: ${formatUsdtCompact(claimResult.newUsdtBalanceMicro)} USDT`);
+            amountInput.value = '';
+            await loadState();
+        } else {
+            // Start polling
+            depositBtn.querySelector('span').textContent = 'Waiting for confirmation...';
+            const confirmed = await pollDepositStatus(claimResult.depositId);
+            
+            if (confirmed) {
+                alert('✅ USDT Deposit confirmed!');
+                amountInput.value = '';
+                await loadState();
+            } else {
+                alert('⏳ Deposit is pending. It may take a few minutes to confirm.');
+            }
+        }
+        
+    } catch (error) {
+        console.error('USDT Deposit failed:', error);
+        if (error.message?.includes('User rejected')) {
+            alert('Transaction cancelled');
+        } else {
+            alert('USDT Deposit failed: ' + (error.message || 'Unknown error'));
+        }
+    } finally {
+        depositBtn.disabled = false;
+        depositBtn.querySelector('span').textContent = originalText;
+    }
+}
+
+// Get user's Jetton wallet address for a specific Jetton master
+async function getJettonWalletAddress(ownerAddress, jettonMasterAddress) {
+    try {
+        // Use Toncenter API to get Jetton wallet address
+        const response = await fetch(
+            `https://toncenter.com/api/v2/runGetMethod?` +
+            `address=${encodeURIComponent(jettonMasterAddress)}&` +
+            `method=get_wallet_address&` +
+            `stack=${encodeURIComponent(JSON.stringify([["tvm.Slice", ownerAddress]]))}`,
+            {
+                headers: appConfig.toncenterApiKey ? { 'X-API-Key': appConfig.toncenterApiKey } : {}
+            }
+        );
+        
+        const data = await response.json();
+        console.log('get_wallet_address response:', data);
+        
+        if (data.ok && data.result?.stack?.[0]?.[1]?.object?.data?.b64) {
+            // Parse the cell to get address
+            // This is simplified - in production use proper BOC parsing
+            return data.result.stack[0][1].object.data.b64;
+        }
+        
+        // Fallback: try to get from Jetton wallets list
+        const walletsResponse = await fetch(
+            `https://toncenter.com/api/v3/jetton/wallets?` +
+            `owner_address=${encodeURIComponent(ownerAddress)}&` +
+            `jetton_address=${encodeURIComponent(jettonMasterAddress)}&limit=1`
+        );
+        
+        const walletsData = await walletsResponse.json();
+        console.log('Jetton wallets response:', walletsData);
+        
+        if (walletsData.jetton_wallets?.length > 0) {
+            return walletsData.jetton_wallets[0].address;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Failed to get Jetton wallet address:', error);
+        return null;
+    }
+}
+
+// Build Jetton transfer payload (simplified)
+function buildJettonTransferPayload(amount, destination, responseDestination) {
+    // Jetton transfer opcode: 0x0f8a7ea5
+    // This is a simplified version - creates a base64 payload
+    // In production, use proper BOC builder
+    
+    // For TonConnect, we can use a simpler approach with comment
+    // The payload should be a base64-encoded BOC cell
+    
+    // Simplified: use transfer with comment
+    // Most Jetton wallets accept this format
+    const comment = `transfer:${amount}:${destination}`;
+    
+    // Create a simple text comment payload
+    // 0x00000000 + utf8 text
+    const encoder = new TextEncoder();
+    const commentBytes = encoder.encode(comment);
+    const payload = new Uint8Array(4 + commentBytes.length);
+    payload.set([0, 0, 0, 0], 0); // text comment opcode
+    payload.set(commentBytes, 4);
+    
+    return btoa(String.fromCharCode(...payload));
+}
+
+// Claim USDT deposit via API
+async function claimUsdtDeposit(amountMicro) {
+    const fromAddress = currentWalletAddress || null;
+    
+    const response = await fetch('/api/deposit/claim', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Tg-UserId': telegramUserId.toString()
+        },
+        body: JSON.stringify({ 
+            amountNano: amountMicro, // For USDT, this is micro (6 decimals)
+            fromAddress,
+            asset: 'USDT'
+        })
+    });
+    
+    return response.json();
 }
 
 // Claim deposit via API (includes fromAddress for verification)

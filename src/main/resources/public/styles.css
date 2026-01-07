@@ -601,6 +601,13 @@ body {
     gap: 6px;
 }
 
+.deposit__hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin: 0;
+}
+
 /* === Withdraw === */
 .withdraw__fields {
     display: flex;

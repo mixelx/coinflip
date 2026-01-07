@@ -67,10 +67,11 @@ public class ApiController {
         LOG.debug("GET /api/config");
         ConfigResponse response = new ConfigResponse(
                 appConfig.getDeposit().getTonAddress(),
-                appConfig.getTon().getNetwork()
+                appConfig.getTon().getNetwork(),
+                appConfig.getDeposit().getUsdtJettonMaster()
         );
-        LOG.debug("GET /api/config -> depositAddress={}, network={}", 
-                response.depositTonAddress(), response.network());
+        LOG.debug("GET /api/config -> depositAddress={}, network={}, usdtJettonMaster={}", 
+                response.depositTonAddress(), response.network(), response.usdtJettonMaster());
         return response;
     }
 
@@ -145,7 +146,8 @@ public class ApiController {
     @ExecuteOn(TaskExecutors.BLOCKING)
     public HttpResponse<DepositClaimResponse> claimDeposit(HttpRequest<?> request, @Body DepositClaimRequest body) {
         LOG.info("=== POST /api/deposit/claim START ===");
-        LOG.info("Request: amountNano={}, fromAddress={}", body.amountNano(), body.fromAddress());
+        String asset = body.asset() != null ? body.asset() : "TON";
+        LOG.info("Request: amountNano={}, fromAddress={}, asset={}", body.amountNano(), body.fromAddress(), asset);
         
         long telegramUserId = telegramUserHelper.requireTelegramUserId(request);
         LOG.debug("telegramUserId={}", telegramUserId);
@@ -157,7 +159,8 @@ public class ApiController {
         DepositClaimService.ClaimResult result = depositClaimService.claimDeposit(
                 userId, 
                 body.amountNano(), 
-                body.fromAddress()
+                body.fromAddress(),
+                asset
         );
         LOG.info("claimDeposit result: status={}, depositId={}, txHash={}", 
                 result.status(), result.depositId(), result.txHash());

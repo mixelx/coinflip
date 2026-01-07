@@ -6,6 +6,7 @@ import io.micronaut.serde.annotation.Serdeable;
 @Serdeable
 public record DepositClaimRequest(
         long amountNano,
-        @Nullable String fromAddress
+        @Nullable String fromAddress,
+        @Nullable String asset  // "TON" or "USDT", defaults to "TON"
 ) {
 }

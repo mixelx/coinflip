@@ -38,6 +38,7 @@ flyway:
 app:
   deposit:
     ton-address: "UQAN-GMEfjCLxd_K0Yn7wri7vWiCTUIogzzhqdyUNTYqPQe5"
+    usdt-jetton-master: "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
   ton:
     network: "mainnet"
     verify:
