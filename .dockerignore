@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Misc
+*.md
+*.log
+

@@ -1,0 +1,9 @@
+[phases.setup]
+nixPkgs = ["jdk21"]
+
+[phases.build]
+cmds = ["./gradlew shadowJar"]
+
+[start]
+cmd = "java -jar $(ls build/libs/*-all.jar | head -1)"
+
