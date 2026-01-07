@@ -59,8 +59,12 @@ async function loadConfig() {
 
 function initTonConnect() {
     try {
+        // Use absolute URL for manifest - required by some wallets
+        const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+        console.log('TonConnect manifest URL:', manifestUrl);
+        
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: '/tonconnect-manifest.json',
+            manifestUrl: manifestUrl,
             buttonRootId: null
         });
 
@@ -75,8 +79,11 @@ function initTonConnect() {
         if (tonConnectUI.wallet) {
             onWalletConnected(tonConnectUI.wallet);
         }
+        
+        console.log('TonConnect initialized successfully');
     } catch (error) {
         console.error('Failed to initialize TonConnect:', error);
+        alert('Failed to initialize wallet connection: ' + error.message);
     }
 }
 

@@ -1,7 +1,5 @@
 {
   "url": "https://coinflip-production-5318.up.railway.app",
   "name": "Coinflip",
-  "iconUrl": "https://coinflip-production-5318.up.railway.app/icon.svg",
-  "termsOfUseUrl": "https://coinflip-production-5318.up.railway.app/terms",
-  "privacyPolicyUrl": "https://coinflip-production-5318.up.railway.app/privacy"
+  "iconUrl": "https://coinflip-production-5318.up.railway.app/icon.svg"
 }

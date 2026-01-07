@@ -3,6 +3,18 @@ micronaut:
     name: demo
   server:
     port: 8080
+    cors:
+      enabled: true
+      configurations:
+        all:
+          allowed-origins:
+            - ".*"
+          allowed-methods:
+            - GET
+            - POST
+            - OPTIONS
+          allowed-headers:
+            - "*"
   router:
     static-resources:
       default:
