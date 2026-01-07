@@ -1,0 +1,8 @@
+{
+  "url": "http://localhost:8080",
+  "name": "Coinflip",
+  "iconUrl": "http://localhost:8080/icon.svg",
+  "termsOfUseUrl": "http://localhost:8080/terms",
+  "privacyPolicyUrl": "http://localhost:8080/privacy"
+}
+

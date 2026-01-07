@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coinflip</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header__top">
+                <div class="header__brand">
+                    <div class="header__logo">
+                        <svg viewBox="0 0 32 32" fill="none">
+                            <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/>
+                            <path d="M16 6v20M10 16h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h1 class="header__title">Coinflip</h1>
+                </div>
+                <div class="header__wallet">
+                    <div id="wallet-status" class="wallet-status wallet-status--disconnected">
+                        <span class="wallet-status__dot"></span>
+                        <span class="wallet-status__text">Not connected</span>
+                    </div>
+                    <button id="connect-btn" class="btn btn--primary btn--connect">
+                        <span>Connect Wallet</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Wallet Address (shown when connected) -->
+            <div id="wallet-info" class="wallet-info hidden">
+                <span class="wallet-info__label">Wallet:</span>
+                <span id="wallet-address" class="wallet-info__address">—</span>
+            </div>
+
+            <!-- Balances in Header -->
+            <div class="header__balances">
+                <div class="balance-chip balance-chip--ton">
+                    <svg viewBox="0 0 24 24" fill="none" class="balance-chip__icon">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor"/>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span class="balance-chip__value" id="ton-balance">0.000</span>
+                    <span class="balance-chip__label">TON</span>
+                </div>
+                <div class="balance-chip balance-chip--usdt">
+                    <svg viewBox="0 0 24 24" fill="none" class="balance-chip__icon">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 6v12M8 10h8M8 14h8" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span class="balance-chip__value" id="usdt-balance">0.00</span>
+                    <span class="balance-chip__label">USDT</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab tab--active" data-tab="game">
+                <span class="tab__icon">🎲</span>
+                <span class="tab__label">Game</span>
+            </button>
+            <button class="tab" data-tab="deposit">
+                <span class="tab__icon">📥</span>
+                <span class="tab__label">Deposit</span>
+            </button>
+            <button class="tab" data-tab="withdraw">
+                <span class="tab__icon">📤</span>
+                <span class="tab__label">Withdraw</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Game Tab -->
+            <section id="tab-game" class="tab-content tab-content--active">
+                <div class="card coinflip">
+                    <div class="coinflip__game">
+                        <div class="coinflip__coin" id="coin">
+                            <div class="coinflip__coin-side coinflip__coin-side--heads">H</div>
+                            <div class="coinflip__coin-side coinflip__coin-side--tails">T</div>
+                        </div>
+                        
+                        <div class="coinflip__controls">
+                            <div class="coinflip__sides">
+                                <button class="coinflip__side-btn coinflip__side-btn--active" data-side="HEADS">
+                                    <span class="coinflip__side-icon">H</span>
+                                    <span>Heads</span>
+                                </button>
+                                <button class="coinflip__side-btn" data-side="TAILS">
+                                    <span class="coinflip__side-icon">T</span>
+                                    <span>Tails</span>
+                                </button>
+                            </div>
+                            
+                            <div class="coinflip__stake">
+                                <label class="input-label">Stake (TON nano)</label>
+                                <input type="number" id="stake-input" class="input" placeholder="1000000000" value="1000000000">
+                            </div>
+                            
+                            <button id="flip-btn" class="btn btn--accent btn--large btn--full">
+                                <span>🎲 Flip!</span>
+                            </button>
+                        </div>
+                        
+                        <div id="flip-result" class="coinflip__result hidden">
+                            <span class="coinflip__result-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- Recent Games -->
+                    <div class="coinflip__history">
+                        <h3 class="card__subtitle">Recent Games</h3>
+                        <div id="games-list" class="history-list">
+                            <div class="history-list__empty">No games yet</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Deposit Tab -->
+            <section id="tab-deposit" class="tab-content">
+                <div class="card">
+                    <h2 class="card__title">Deposit Funds</h2>
+                    <div class="deposit__form">
+                        <div class="deposit__asset-select">
+                            <button class="deposit__asset-btn deposit__asset-btn--active" data-asset="TON">TON</button>
+                            <button class="deposit__asset-btn" data-asset="USDT">USDT</button>
+                        </div>
+                        
+                        <div class="deposit__info">
+                            <label class="input-label">Deposit Address</label>
+                            <div class="deposit__address">
+                                <code id="deposit-address">Loading...</code>
+                                <button id="copy-address-btn" class="btn btn--icon" title="Copy">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="deposit__amount">
+                            <label class="input-label">Amount</label>
+                            <input type="number" id="deposit-amount" class="input" placeholder="0.1">
+                        </div>
+                        
+                        <button id="deposit-confirm-btn" class="btn btn--primary btn--full">
+                            <span>💎 Deposit TON</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Withdraw Tab -->
+            <section id="tab-withdraw" class="tab-content">
+                <div class="card">
+                    <h2 class="card__title">Withdraw Funds</h2>
+                    <div class="withdraw__form">
+                        <div class="withdraw__asset-select">
+                            <button class="withdraw__asset-btn withdraw__asset-btn--active" data-asset="TON">TON</button>
+                            <button class="withdraw__asset-btn" data-asset="USDT">USDT</button>
+                        </div>
+                        
+                        <div class="withdraw__fields">
+                            <div class="withdraw__field">
+                                <label class="input-label">Amount</label>
+                                <input type="number" id="withdraw-amount" class="input" placeholder="0.1">
+                            </div>
+                            <div class="withdraw__field">
+                                <label class="input-label">To Address</label>
+                                <input type="text" id="withdraw-address" class="input" placeholder="EQ...">
+                            </div>
+                        </div>
+                        
+                        <button id="withdraw-btn" class="btn btn--primary btn--full">
+                            <span>Request Withdraw</span>
+                        </button>
+                    </div>
+
+                    <!-- Withdraw History -->
+                    <div class="withdraw__history">
+                        <h3 class="card__subtitle">Withdraw Requests</h3>
+                        <div id="withdraws-list" class="history-list">
+                            <div class="history-list__empty">No withdraw requests</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>Coinflip © 2026</span>
+        </footer>
+    </div>
+
+    <!-- TonConnect UI -->
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>

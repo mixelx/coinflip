@@ -1,0 +1,739 @@
+/* === CSS Variables === */
+:root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #12121a;
+    --bg-card: #1a1a24;
+    --bg-card-hover: #22222e;
+    
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #555566;
+    
+    --accent-primary: #00d4aa;
+    --accent-primary-hover: #00eebb;
+    --accent-secondary: #7b61ff;
+    --accent-ton: #0098ea;
+    --accent-usdt: #26a17b;
+    
+    --success: #00c853;
+    --error: #ff4757;
+    --warning: #ffa502;
+    
+    --border-color: #2a2a3a;
+    --border-radius: 12px;
+    --border-radius-sm: 8px;
+    --border-radius-lg: 16px;
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* === Reset & Base === */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--font-mono);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* === App Container === */
+.app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* === Header === */
+.header {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 100;
+}
+
+.header__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.header__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header__logo {
+    width: 28px;
+    height: 28px;
+    color: var(--accent-primary);
+}
+
+.header__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.header__wallet {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* === Wallet Status === */
+.wallet-status {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+@media (min-width: 400px) {
+    .wallet-status {
+        display: flex;
+    }
+}
+
+.wallet-status__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--error);
+}
+
+.wallet-status--connected .wallet-status__dot {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.wallet-status--connected .wallet-status__text {
+    color: var(--success);
+}
+
+/* === Wallet Info === */
+.wallet-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid var(--accent-primary);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+}
+
+.wallet-info__label {
+    color: var(--text-secondary);
+}
+
+.wallet-info__address {
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+/* === Header Balances === */
+.header__balances {
+    display: flex;
+    gap: 8px;
+}
+
+.balance-chip {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.balance-chip__icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.balance-chip--ton .balance-chip__icon {
+    color: var(--accent-ton);
+}
+
+.balance-chip--usdt .balance-chip__icon {
+    color: var(--accent-usdt);
+}
+
+.balance-chip__value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.balance-chip__label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* === Tabs === */
+.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    background: transparent;
+    border: none;
+    border-radius: var(--border-radius);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.tab:hover {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+}
+
+.tab--active {
+    background: var(--bg-card);
+    color: var(--accent-primary);
+    border: 1px solid var(--accent-primary);
+}
+
+.tab__icon {
+    font-size: 1.25rem;
+}
+
+.tab__label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* === Tab Content === */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.2s ease;
+}
+
+.tab-content--active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Buttons === */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--accent-primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn--accent {
+    background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+    color: white;
+}
+
+.btn--accent:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn--large {
+    padding: 16px 28px;
+    font-size: 1rem;
+}
+
+.btn--full {
+    width: 100%;
+}
+
+.btn--connect {
+    padding: 8px 14px;
+    font-size: 0.75rem;
+}
+
+.btn--icon {
+    padding: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+.btn--icon:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* === Cards === */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.card__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.card__subtitle {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 20px 0 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* === Main Content === */
+.main {
+    flex: 1;
+    padding: 16px 0;
+}
+
+/* === Coinflip === */
+.coinflip__game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.coinflip__coin {
+    width: 90px;
+    height: 90px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+}
+
+.coinflip__coin.flipping {
+    animation: coinFlip 1s ease-in-out;
+}
+
+@keyframes coinFlip {
+    0% { transform: rotateY(0); }
+    100% { transform: rotateY(1800deg); }
+}
+
+.coinflip__coin-side {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    font-weight: 700;
+    backface-visibility: hidden;
+}
+
+.coinflip__coin-side--heads {
+    background: linear-gradient(135deg, var(--accent-primary), #00aa88);
+    color: var(--bg-primary);
+}
+
+.coinflip__coin-side--tails {
+    background: linear-gradient(135deg, var(--accent-secondary), #5544cc);
+    color: white;
+    transform: rotateY(180deg);
+}
+
+.coinflip__coin.result-tails {
+    transform: rotateY(180deg);
+}
+
+.coinflip__controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.coinflip__sides {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.coinflip__side-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.coinflip__side-btn:hover {
+    border-color: var(--text-muted);
+}
+
+.coinflip__side-btn--active {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: rgba(0, 212, 170, 0.1);
+}
+
+.coinflip__side-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.coinflip__side-btn[data-side="HEADS"] .coinflip__side-icon {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.coinflip__side-btn[data-side="TAILS"] .coinflip__side-icon {
+    background: var(--accent-secondary);
+    color: white;
+}
+
+.coinflip__stake {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.coinflip__result {
+    padding: 14px 20px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.coinflip__result--win {
+    background: rgba(0, 200, 83, 0.15);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+.coinflip__result--lose {
+    background: rgba(255, 71, 87, 0.15);
+    border: 1px solid var(--error);
+    color: var(--error);
+}
+
+/* === Inputs === */
+.input-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+/* === Deposit === */
+.deposit__form,
+.withdraw__form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.deposit__asset-select,
+.withdraw__asset-select {
+    display: flex;
+    gap: 8px;
+}
+
+.deposit__asset-btn,
+.withdraw__asset-btn {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.deposit__asset-btn:hover,
+.withdraw__asset-btn:hover {
+    border-color: var(--text-muted);
+}
+
+.deposit__asset-btn--active,
+.withdraw__asset-btn--active {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: rgba(0, 212, 170, 0.1);
+}
+
+.deposit__info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.deposit__address {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius-sm);
+}
+
+.deposit__address code {
+    flex: 1;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.deposit__amount {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* === Withdraw === */
+.withdraw__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.withdraw__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.withdraw__history {
+    margin-top: 8px;
+}
+
+/* === History List === */
+.history-list {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.history-list__empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 6px;
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-item__main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.history-item__title {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.history-item__subtitle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.history-item__badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.history-item__badge--win {
+    background: rgba(0, 200, 83, 0.2);
+    color: var(--success);
+}
+
+.history-item__badge--lose {
+    background: rgba(255, 71, 87, 0.2);
+    color: var(--error);
+}
+
+.history-item__badge--pending {
+    background: rgba(255, 165, 2, 0.2);
+    color: var(--warning);
+}
+
+/* === Footer === */
+.footer {
+    margin-top: auto;
+    padding: 16px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* === Utilities === */
+.hidden {
+    display: none !important;
+}
+
+/* === Scrollbar === */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* === Responsive === */
+@media (max-width: 360px) {
+    .header__top {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .header__wallet {
+        justify-content: space-between;
+    }
+    
+    .balance-chip {
+        padding: 8px 10px;
+    }
+    
+    .balance-chip__value {
+        font-size: 0.8rem;
+    }
+}

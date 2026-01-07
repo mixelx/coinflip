@@ -1,0 +1,36 @@
+micronaut:
+  application:
+    name: demo
+  server:
+    port: 8080
+  router:
+    static-resources:
+      default:
+        enabled: true
+        mapping: /**
+        paths: classpath:public
+
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/coinflip
+    username: coinflip
+    password: coinflip
+    driver-class-name: org.postgresql.Driver
+    dialect: POSTGRES
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+
+app:
+  deposit:
+    ton-address: "UQAN-GMEfjCLxd_K0Yn7wri7vWiCTUIogzzhqdyUNTYqPQe5"
+  ton:
+    network: "mainnet"
+    verify:
+      lookback-tx-count: 20
+  toncenter:
+    base-url: "https://toncenter.com/api/v2"
+    api-key: "7fac53bbccd5e782a2609e568ae0c40f3ceaece37a5fecca30457d478c7bd1af"
+
