@@ -24,6 +24,6 @@ public interface WithdrawRequestRepository extends CrudRepository<WithdrawReques
     /**
      * Recovery: find stuck PROCESSING requests.
      */
-    @Query("SELECT w FROM WithdrawRequestEntity w WHERE w.status = 'PROCESSING' AND w.updatedAt < :cutoff")
+    @Query(value = "SELECT * FROM withdraw_request WHERE status = 'PROCESSING' AND updated_at < :cutoff", nativeQuery = true)
     List<WithdrawRequestEntity> findStuckProcessing(java.time.OffsetDateTime cutoff);
 }
