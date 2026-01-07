@@ -12,8 +12,10 @@ import org.ton.ton4j.mnemonic.Mnemonic;
 import org.ton.ton4j.mnemonic.Pair;
 import org.ton.ton4j.smartcontract.SendMode;
 import org.ton.ton4j.smartcontract.SendResponse;
-import org.ton.ton4j.smartcontract.types.WalletV4R2Config;
-import org.ton.ton4j.smartcontract.wallet.v4.WalletV4R2;
+import org.ton.ton4j.smartcontract.types.Destination;
+import org.ton.ton4j.smartcontract.types.WalletV5Config;
+import org.ton.ton4j.smartcontract.types.WalletV5InnerRequest;
+import org.ton.ton4j.smartcontract.wallet.v5.WalletV5;
 import org.ton.ton4j.toncenter.TonCenter;
 import org.ton.ton4j.utils.Utils;
 
@@ -26,7 +28,7 @@ import java.util.List;
 
 /**
  * Client for sending TON from hot wallet.
- * Uses official ton4j library with WalletV4R2 and TonCenter API.
+ * Uses official ton4j library with WalletV5 (V5R1) and TonCenter API.
  *
  * @see <a href="https://github.com/ton-blockchain/ton4j">ton4j on GitHub</a>
  */
@@ -45,7 +47,7 @@ public class TonPayoutClient {
     private String depositTonAddress;
 
     private TonCenter tonCenter;
-    private WalletV4R2 wallet;
+    private WalletV5 wallet;
     private Address walletAddress;
     private boolean initialized = false;
     private boolean realModeAvailable = false;
@@ -55,7 +57,7 @@ public class TonPayoutClient {
             @Value("${app.wallet.mnemonic:}") String mnemonic,
             @Value("${app.ton.network:mainnet}") String network,
             @Value("${app.withdraw.mock-mode:false}") boolean mockMode,
-            @Value("${app.wallet.subwallet-id:698983191}") long walletId) {
+            @Value("${app.wallet.subwallet-id:2147483409}") long walletId) {
         this.toncenterApiKey = toncenterApiKey;
         this.mnemonic = mnemonic;
         this.network = network;
@@ -78,7 +80,7 @@ public class TonPayoutClient {
         }
 
         try {
-            LOG.info("Initializing TON payout client for network: {}, subwallet_id: {}", network, walletId);
+            LOG.info("Initializing TON payout client (WalletV5) for network: {}, subwallet_id: {}", network, walletId);
 
             // Parse mnemonic
             List<String> mnemonicWords = Arrays.asList(mnemonic.trim().split("\\s+"));
@@ -110,30 +112,38 @@ public class TonPayoutClient {
             // Create keypair from mnemonic
             // Mnemonic.toKeyPair returns Pair with Ed25519 keys
             Pair mnemonicKeyPair = Mnemonic.toKeyPair(mnemonicWords);
-            // Convert to TweetNaclFast.Signature.KeyPair for WalletV4R2
+            // Convert to TweetNaclFast.Signature.KeyPair for WalletV5
             TweetNaclFast.Signature.KeyPair keyPair = 
                     TweetNaclFast.Signature.keyPair_fromSeed(mnemonicKeyPair.getSecretKey());
             LOG.debug("KeyPair created from mnemonic");
             LOG.debug("Public key: {}", Utils.bytesToHex(keyPair.getPublicKey()));
 
-            // Create WalletV4R2 instance using ton4j smartcontract module
-            wallet = WalletV4R2.builder()
+            // Create WalletV5 instance using ton4j smartcontract module
+            wallet = WalletV5.builder()
                     .tonCenterClient(tonCenter)
                     .keyPair(keyPair)
                     .walletId(walletId)
+                    .isSigAuthAllowed(true)
                     .build();
 
-            // Get wallet address from the wallet contract
+            // Get wallet address from the contract (computed from mnemonic + walletId)
             walletAddress = wallet.getAddress();
-            LOG.info("Hot wallet address (computed): {}", walletAddress.toBounceable());
+            LOG.info("Hot wallet address (computed from mnemonic, WalletV5): {}", walletAddress.toBounceable());
 
-            // Verify it matches config if provided
+            // Warn if config address differs - this likely means wrong mnemonic or subwallet-id
             if (depositTonAddress != null && !depositTonAddress.isBlank()) {
                 Address configAddress = Address.of(depositTonAddress);
                 if (!walletAddress.toRaw().equals(configAddress.toRaw())) {
-                    LOG.warn("⚠️ Computed wallet address {} differs from config address {}",
+                    LOG.error("❌ CRITICAL: Computed wallet address {} differs from config address {}",
                             walletAddress.toBounceable(), configAddress.toBounceable());
-                    LOG.warn("Using computed address from mnemonic");
+                    LOG.error("This means either:");
+                    LOG.error("  1) Wrong mnemonic in config");
+                    LOG.error("  2) Wrong subwallet-id (current: {})", walletId);
+                    LOG.error("  3) Check wallet version - using WalletV5 (V5R1)");
+                    LOG.error("Transactions will FAIL if mnemonic doesn't match the wallet!");
+                    LOG.warn("Using computed address {} for sending", walletAddress.toBounceable());
+                } else {
+                    LOG.info("✅ Wallet address matches config!");
                 }
             }
 
@@ -223,15 +233,15 @@ public class TonPayoutClient {
             return sendTonMock(toAddress, amountNano);
         }
 
-        // Real sending via WalletV4R2
+        // Real sending via WalletV5
         return sendTonReal(toAddress, amountNano);
     }
 
     /**
-     * Real TON sending using WalletV4R2 from ton4j smartcontract module.
+     * Real TON sending using WalletV5 from ton4j smartcontract module.
      */
     private String sendTonReal(String toAddress, long amountNano) throws TonPayoutException {
-        LOG.info("Sending {} nano TON to {} (REAL MODE)", amountNano, toAddress);
+        LOG.info("Sending {} nano TON to {} (REAL MODE, WalletV5)", amountNano, toAddress);
 
         try {
             if (wallet == null) {
@@ -256,17 +266,25 @@ public class TonPayoutClient {
             long seqno = wallet.getSeqno();
             LOG.info("Wallet seqno: {}", seqno);
 
-            // Create transfer config using WalletV4R2Config
-            WalletV4R2Config config = WalletV4R2Config.builder()
-                    .walletId(walletId)
-                    .seqno(seqno)
-                    .destination(destAddress)
+            // Create destination for WalletV5
+            Destination destination = Destination.builder()
+                    .address(toAddress)
                     .amount(amount)
                     .bounce(false)  // Don't bounce to non-existent addresses
                     .sendMode(SendMode.PAY_GAS_SEPARATELY_AND_IGNORE_ERRORS)
                     .build();
 
-            // Send the transaction using WalletV4R2
+            // Create bulk transfer request (even for single transfer)
+            WalletV5InnerRequest innerRequest = wallet.createBulkTransfer(List.of(destination));
+
+            // Create WalletV5Config with the transfer body
+            WalletV5Config config = WalletV5Config.builder()
+                    .walletId(walletId)
+                    .seqno(seqno)
+                    .body(innerRequest.toCell())
+                    .build();
+
+            // Send the transaction using WalletV5
             SendResponse response = wallet.send(config);
 
             // Generate a transaction hash based on the operation
@@ -274,7 +292,7 @@ public class TonPayoutClient {
             // we generate one based on the response
             String txHash = generateTxHash(String.valueOf(System.nanoTime()) + seqno + toAddress);
             
-            if (response.getCode() == 0 || response.getCode() == 200) {
+            if (response.getCode() == 0 || response.getCode() == 200 || response.getCode() == 1) {
                 LOG.info("TON sent successfully. txHash={}, to={}, amount={} nano",
                         txHash, toAddress, amountNano);
                 return txHash;
