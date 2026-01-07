@@ -50,6 +50,11 @@ app:
     # Mnemonic for hot wallet (24 words, space-separated)
     # In production, use environment variable: APP_WALLET_MNEMONIC
     mnemonic: ${APP_WALLET_MNEMONIC:}
+    # WalletV4R2 subwallet_id - use the same value as when wallet was created
+    # Default: 698983191 (standard WalletV4R2 mainnet)
+    # If you see exitcode=138 error, check what value your wallet expects
+    # and set it here or via APP_WALLET_SUBWALLET_ID env var
+    subwallet-id: ${APP_WALLET_SUBWALLET_ID:698983191}
   withdraw:
     max-attempts: 3
     worker-batch-size: 5

@@ -25,3 +25,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_withdraw_tx_hash ON withdraw_request(tx_has
 -- Index for recovery of stuck PROCESSING requests
 CREATE INDEX IF NOT EXISTS idx_withdraw_processing_updated ON withdraw_request(status, updated_at) WHERE status = 'PROCESSING';
 
+
