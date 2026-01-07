@@ -29,8 +29,22 @@ public class WithdrawRequestEntity {
 
     private String status;
 
+    private Integer attempts;
+
+    @MappedProperty("last_error")
+    private String lastError;
+
+    @MappedProperty("tx_hash")
+    private String txHash;
+
     @MappedProperty("created_at")
     private OffsetDateTime createdAt;
+
+    @MappedProperty("updated_at")
+    private OffsetDateTime updatedAt;
+
+    @MappedProperty("processed_at")
+    private OffsetDateTime processedAt;
 
     public WithdrawRequestEntity() {
     }
@@ -41,6 +55,9 @@ public class WithdrawRequestEntity {
         this.amount = amount;
         this.toAddress = toAddress;
         this.status = status;
+        this.attempts = 0;
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 
     public UUID getId() {
@@ -91,6 +108,30 @@ public class WithdrawRequestEntity {
         this.status = status;
     }
 
+    public Integer getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(Integer attempts) {
+        this.attempts = attempts;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
+    }
+
+    public String getTxHash() {
+        return txHash;
+    }
+
+    public void setTxHash(String txHash) {
+        this.txHash = txHash;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -98,5 +139,20 @@ public class WithdrawRequestEntity {
     public void setCreatedAt(OffsetDateTime createdAt) {
         this.createdAt = createdAt;
     }
-}
 
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public OffsetDateTime getProcessedAt() {
+        return processedAt;
+    }
+
+    public void setProcessedAt(OffsetDateTime processedAt) {
+        this.processedAt = processedAt;
+    }
+}

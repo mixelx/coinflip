@@ -12,7 +12,8 @@ public record WithdrawDto(
         long amount,
         String toAddress,
         String status,
+        String txHash,
+        String lastError,
         OffsetDateTime createdAt
 ) {
 }
-

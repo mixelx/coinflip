@@ -1,6 +1,7 @@
 package com.example.db.repo;
 
 import com.example.db.entity.WithdrawRequestEntity;
+import io.micronaut.data.annotation.Query;
 import io.micronaut.data.jdbc.annotation.JdbcRepository;
 import io.micronaut.data.model.query.builder.sql.Dialect;
 import io.micronaut.data.repository.CrudRepository;
@@ -12,5 +13,17 @@ import java.util.UUID;
 public interface WithdrawRequestRepository extends CrudRepository<WithdrawRequestEntity, UUID> {
 
     List<WithdrawRequestEntity> findTop20ByUserIdOrderByCreatedAtDesc(UUID userId);
-}
 
+    /**
+     * Find CREATED withdraw requests for processing.
+     * NOTE: For MVP, we don't use FOR UPDATE SKIP LOCKED (requires raw JDBC).
+     * In production with multiple workers, consider using JdbcOperations directly.
+     */
+    List<WithdrawRequestEntity> findByStatusOrderByCreatedAtAsc(String status);
+
+    /**
+     * Recovery: find stuck PROCESSING requests.
+     */
+    @Query("SELECT w FROM WithdrawRequestEntity w WHERE w.status = 'PROCESSING' AND w.updatedAt < :cutoff")
+    List<WithdrawRequestEntity> findStuckProcessing(java.time.OffsetDateTime cutoff);
+}

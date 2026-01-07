@@ -13,7 +13,6 @@
     --accent-primary-hover: #00eebb;
     --accent-secondary: #7b61ff;
     --accent-ton: #0098ea;
-    --accent-usdt: #26a17b;
     
     --success: #00c853;
     --error: #ff4757;
@@ -186,9 +185,6 @@ body {
     color: var(--accent-ton);
 }
 
-.balance-chip--usdt .balance-chip__icon {
-    color: var(--accent-usdt);
-}
 
 .balance-chip__value {
     font-size: 0.9rem;
@@ -538,60 +534,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 14px;
-}
-
-.deposit__asset-select,
-.withdraw__asset-select {
-    display: flex;
-    gap: 8px;
-}
-
-.deposit__asset-btn,
-.withdraw__asset-btn {
-    flex: 1;
-    padding: 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    color: var(--text-secondary);
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.deposit__asset-btn:hover,
-.withdraw__asset-btn:hover {
-    border-color: var(--text-muted);
-}
-
-.deposit__asset-btn--active,
-.withdraw__asset-btn--active {
-    border-color: var(--accent-primary);
-    color: var(--accent-primary);
-    background: rgba(0, 212, 170, 0.1);
-}
-
-.deposit__info {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.deposit__address {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius-sm);
-}
-
-.deposit__address code {
-    flex: 1;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
     word-break: break-all;
 }
 
@@ -689,6 +631,32 @@ body {
 .history-item__badge--pending {
     background: rgba(255, 165, 2, 0.2);
     color: var(--warning);
+}
+
+.history-item__badge--processing {
+    background: rgba(0, 152, 234, 0.2);
+    color: var(--accent-ton);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.history-item__txhash {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+}
+
+.history-item__error {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--error);
+    margin-top: 2px;
 }
 
 /* === Footer === */

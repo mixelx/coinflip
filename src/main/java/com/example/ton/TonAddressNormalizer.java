@@ -1,5 +1,6 @@
 package com.example.ton;
 
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,12 +14,13 @@ import java.util.Base64;
  * - Raw: "workchain:hex" (e.g., "0:abcdef1234...")
  * - Friendly: Base64 encoded with CRC16 (e.g., "EQAbcdef..." or "UQAbcdef...")
  */
-public final class TonAddressNormalizer {
+@Singleton
+public class TonAddressNormalizer {
 
     private static final Logger LOG = LoggerFactory.getLogger(TonAddressNormalizer.class);
 
-    private TonAddressNormalizer() {
-        // Utility class
+    public TonAddressNormalizer() {
+        // Singleton
     }
 
     /**

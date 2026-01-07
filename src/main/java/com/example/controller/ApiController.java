@@ -273,6 +273,8 @@ public class ApiController {
                 entity.getAmount(),
                 entity.getToAddress(),
                 entity.getStatus(),
+                entity.getTxHash(),
+                entity.getLastError(),
                 entity.getCreatedAt()
         );
     }

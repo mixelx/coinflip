@@ -46,4 +46,16 @@ app:
   toncenter:
     base-url: "https://toncenter.com/api/v2"
     api-key: "7fac53bbccd5e782a2609e568ae0c40f3ceaece37a5fecca30457d478c7bd1af"
+  wallet:
+    # Mnemonic for hot wallet (24 words, space-separated)
+    # In production, use environment variable: APP_WALLET_MNEMONIC
+    mnemonic: ${APP_WALLET_MNEMONIC:}
+  withdraw:
+    max-attempts: 3
+    worker-batch-size: 5
+    worker-interval-ms: 3000
+    recovery-interval-ms: 60000
+    # Set to true to simulate withdrawals without sending real TON
+    # Default: false in production (requires APP_WALLET_MNEMONIC)
+    mock-mode: ${APP_WITHDRAW_MOCK_MODE:false}
 
