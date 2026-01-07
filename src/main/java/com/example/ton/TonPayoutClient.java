@@ -180,6 +180,9 @@ public class TonPayoutClient {
 
     /**
      * Real TON sending using ton4j + Toncenter API.
+     * 
+     * NOTE: BOC creation is complex and error-prone. If real sending fails,
+     * consider using mock mode until proper testing is done.
      */
     private String sendTonReal(String toAddress, long amountNano) throws TonPayoutException {
         LOG.info("Sending {} nano TON to {} (REAL MODE)", amountNano, toAddress);
@@ -187,29 +190,37 @@ public class TonPayoutClient {
         try {
             // Get wallet address from config (deposit address is our hot wallet)
             String hotWalletAddress = getHotWalletAddressFromConfig();
-            if (hotWalletAddress == null) {
+            if (hotWalletAddress == null || hotWalletAddress.isBlank()) {
+                LOG.error("Hot wallet address not configured (app.deposit.ton-address)");
                 throw new TonPayoutException("Hot wallet address not configured");
             }
+            LOG.debug("Hot wallet address: {}", hotWalletAddress);
             
             // Get current seqno from Toncenter
             long seqno = getSeqno(hotWalletAddress);
-            LOG.debug("Wallet seqno: {}", seqno);
+            LOG.info("Wallet seqno: {}", seqno);
 
             // Parse destination address
             Address destAddress = Address.of(toAddress);
             BigInteger amount = BigInteger.valueOf(amountNano);
+            LOG.debug("Destination: {}, Amount: {} nano", destAddress.toBounceable(), amount);
 
             // Create internal message (transfer)
             Cell internalMsg = createInternalMessage(destAddress, amount);
+            LOG.debug("Internal message hash: {}", Utils.bytesToHex(internalMsg.hash()));
             
             // Create signed body for WalletV4R2
             Cell signedBody = createSignedWalletBody(seqno, internalMsg);
+            LOG.debug("Signed body hash: {}", Utils.bytesToHex(signedBody.hash()));
             
             // Create external message
             Cell extMsg = createExternalMessage(Address.of(hotWalletAddress), signedBody);
+            LOG.debug("External message hash: {}", Utils.bytesToHex(extMsg.hash()));
             
-            String bocBase64 = Utils.bytesToBase64(extMsg.toBoc());
-            LOG.debug("Created BOC for transfer, length: {}", bocBase64.length());
+            byte[] bocBytes = extMsg.toBoc();
+            String bocBase64 = Utils.bytesToBase64(bocBytes);
+            LOG.info("Created BOC for transfer, size: {} bytes, base64 length: {}", 
+                    bocBytes.length, bocBase64.length());
 
             // Send via Toncenter API
             String txHash = sendBoc(bocBase64);
@@ -370,17 +381,20 @@ public class TonPayoutClient {
      * Send BOC via Toncenter API.
      */
     public String sendBoc(String bocBase64) throws TonPayoutException {
+        String url = toncenterBaseUrl + "/sendBoc";
+        LOG.debug("Sending BOC to Toncenter, length={}", bocBase64.length());
+        
         try {
-            String url = toncenterBaseUrl + "/sendBoc";
-            
             io.micronaut.http.MutableHttpRequest<Map<String, String>> request = 
                     HttpRequest.POST(url, Map.of("boc", bocBase64));
             if (toncenterApiKey != null && !toncenterApiKey.isBlank()) {
                 request.header("X-API-Key", toncenterApiKey);
             }
+            request.header("Content-Type", "application/json");
 
             @SuppressWarnings("unchecked")
             Map<String, Object> response = httpClient.toBlocking().retrieve(request, Map.class);
+            LOG.debug("Toncenter response: {}", response);
             
             if (response.get("ok") != null && Boolean.TRUE.equals(response.get("ok"))) {
                 @SuppressWarnings("unchecked")
@@ -399,12 +413,19 @@ public class TonPayoutClient {
                 return txHash;
             } else {
                 String error = response.get("error") != null ? response.get("error").toString() : "Unknown error";
+                LOG.error("Toncenter rejected BOC: {}", error);
                 throw new TonPayoutException("Toncenter error: " + error);
             }
 
         } catch (TonPayoutException e) {
             throw e;
+        } catch (io.micronaut.http.client.exceptions.HttpClientResponseException e) {
+            // HTTP error response from Toncenter
+            String body = e.getResponse().getBody(String.class).orElse("No body");
+            LOG.error("Toncenter HTTP error {}: {}", e.getStatus(), body);
+            throw new TonPayoutException("Toncenter HTTP error " + e.getStatus() + ": " + body, e);
         } catch (Exception e) {
+            LOG.error("Failed to send BOC: {}", e.getMessage(), e);
             throw new TonPayoutException("Failed to send BOC via Toncenter: " + e.getMessage(), e);
         }
     }
