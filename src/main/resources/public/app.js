@@ -530,9 +530,8 @@ async function handleDepositUsdt() {
         console.log('User Jetton wallet:', jettonWalletAddress);
         
         // Build Jetton transfer payload
-        // transfer#0f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
-        // response_destination:MsgAddress custom_payload:(Maybe ^Cell) forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
-        const transferPayload = buildJettonTransferPayload(
+        depositBtn.querySelector('span').textContent = 'Building transaction...';
+        const transferPayload = await buildJettonTransferPayload(
             amountMicro,
             appConfig.depositTonAddress,
             userAddress  // response destination (refund address)
@@ -599,41 +598,32 @@ async function handleDepositUsdt() {
 
 // Get user's Jetton wallet address for a specific Jetton master
 async function getJettonWalletAddress(ownerAddress, jettonMasterAddress) {
+    console.log('getJettonWalletAddress called:', { ownerAddress, jettonMasterAddress });
+    
     try {
-        // Use Toncenter API to get Jetton wallet address
-        const response = await fetch(
-            `https://toncenter.com/api/v2/runGetMethod?` +
-            `address=${encodeURIComponent(jettonMasterAddress)}&` +
-            `method=get_wallet_address&` +
-            `stack=${encodeURIComponent(JSON.stringify([["tvm.Slice", ownerAddress]]))}`,
-            {
-                headers: appConfig.toncenterApiKey ? { 'X-API-Key': appConfig.toncenterApiKey } : {}
-            }
-        );
+        // Convert raw address (0:abc...) to friendly format if needed
+        const friendlyOwner = await convertToFriendlyAddress(ownerAddress);
+        console.log('Friendly owner address:', friendlyOwner);
         
+        // Use Toncenter API v3 to get Jetton wallets
+        const url = `https://toncenter.com/api/v3/jetton/wallets?` +
+            `owner_address=${encodeURIComponent(friendlyOwner)}&` +
+            `jetton_master=${encodeURIComponent(jettonMasterAddress)}&` +
+            `limit=1`;
+        
+        console.log('Fetching Jetton wallet from:', url);
+        
+        const response = await fetch(url);
         const data = await response.json();
-        console.log('get_wallet_address response:', data);
+        console.log('Jetton wallets API response:', data);
         
-        if (data.ok && data.result?.stack?.[0]?.[1]?.object?.data?.b64) {
-            // Parse the cell to get address
-            // This is simplified - in production use proper BOC parsing
-            return data.result.stack[0][1].object.data.b64;
+        if (data.jetton_wallets && data.jetton_wallets.length > 0) {
+            const walletAddress = data.jetton_wallets[0].address;
+            console.log('Found Jetton wallet:', walletAddress);
+            return walletAddress;
         }
         
-        // Fallback: try to get from Jetton wallets list
-        const walletsResponse = await fetch(
-            `https://toncenter.com/api/v3/jetton/wallets?` +
-            `owner_address=${encodeURIComponent(ownerAddress)}&` +
-            `jetton_address=${encodeURIComponent(jettonMasterAddress)}&limit=1`
-        );
-        
-        const walletsData = await walletsResponse.json();
-        console.log('Jetton wallets response:', walletsData);
-        
-        if (walletsData.jetton_wallets?.length > 0) {
-            return walletsData.jetton_wallets[0].address;
-        }
-        
+        console.warn('No Jetton wallet found for owner');
         return null;
     } catch (error) {
         console.error('Failed to get Jetton wallet address:', error);
@@ -641,28 +631,78 @@ async function getJettonWalletAddress(ownerAddress, jettonMasterAddress) {
     }
 }
 
-// Build Jetton transfer payload (simplified)
-function buildJettonTransferPayload(amount, destination, responseDestination) {
-    // Jetton transfer opcode: 0x0f8a7ea5
-    // This is a simplified version - creates a base64 payload
-    // In production, use proper BOC builder
+// Convert raw TON address (0:abc...) to friendly format (EQ.../UQ...)
+async function convertToFriendlyAddress(address) {
+    if (!address) return address;
     
-    // For TonConnect, we can use a simpler approach with comment
-    // The payload should be a base64-encoded BOC cell
+    // If already friendly format (starts with E, U, etc.), return as is
+    if (!address.includes(':')) {
+        return address;
+    }
     
-    // Simplified: use transfer with comment
-    // Most Jetton wallets accept this format
-    const comment = `transfer:${amount}:${destination}`;
+    try {
+        // Use Toncenter API to convert address
+        const response = await fetch(
+            `https://toncenter.com/api/v2/packAddress?address=${encodeURIComponent(address)}`
+        );
+        const data = await response.json();
+        console.log('packAddress response:', data);
+        
+        if (data.ok && data.result) {
+            return data.result;
+        }
+    } catch (error) {
+        console.error('Failed to convert address:', error);
+    }
     
-    // Create a simple text comment payload
-    // 0x00000000 + utf8 text
-    const encoder = new TextEncoder();
-    const commentBytes = encoder.encode(comment);
-    const payload = new Uint8Array(4 + commentBytes.length);
-    payload.set([0, 0, 0, 0], 0); // text comment opcode
-    payload.set(commentBytes, 4);
+    // Fallback: return original
+    return address;
+}
+
+// Build Jetton transfer payload using TonWeb
+async function buildJettonTransferPayload(amount, destination, responseDestination) {
+    console.log('Building Jetton transfer payload:', { amount, destination, responseDestination });
     
-    return btoa(String.fromCharCode(...payload));
+    try {
+        // Check if TonWeb is available
+        if (typeof TonWeb === 'undefined') {
+            throw new Error('TonWeb not loaded');
+        }
+        
+        const tonweb = new TonWeb();
+        const Cell = TonWeb.boc.Cell;
+        const Address = TonWeb.utils.Address;
+        
+        // Parse addresses
+        const destAddress = new Address(destination);
+        const respAddress = new Address(responseDestination);
+        
+        // Build Jetton transfer body cell
+        // transfer#0f8a7ea5 query_id:uint64 amount:(VarUInteger 16) destination:MsgAddress
+        //                   response_destination:MsgAddress custom_payload:(Maybe ^Cell)
+        //                   forward_ton_amount:(VarUInteger 16) forward_payload:(Either Cell ^Cell)
+        
+        const cell = new Cell();
+        cell.bits.writeUint(0x0f8a7ea5, 32);  // Jetton transfer opcode
+        cell.bits.writeUint(0, 64);            // query_id
+        cell.bits.writeCoins(amount);          // amount (in Jetton units)
+        cell.bits.writeAddress(destAddress);   // destination
+        cell.bits.writeAddress(respAddress);   // response_destination
+        cell.bits.writeBit(false);             // no custom_payload
+        cell.bits.writeCoins(0);               // forward_ton_amount = 0
+        cell.bits.writeBit(false);             // no forward_payload (inline)
+        
+        // Convert to BOC base64
+        const boc = await cell.toBoc();
+        const payload = TonWeb.utils.bytesToBase64(boc);
+        
+        console.log('Built Jetton payload:', payload);
+        return payload;
+        
+    } catch (error) {
+        console.error('Failed to build Jetton payload:', error);
+        throw new Error('Failed to build Jetton transfer: ' + error.message);
+    }
 }
 
 // Claim USDT deposit via API
