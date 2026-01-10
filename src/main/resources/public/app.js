@@ -146,7 +146,9 @@ function onWalletConnected(wallet) {
     
     document.getElementById('wallet-info').classList.remove('hidden');
     document.getElementById('wallet-address').textContent = friendlyAddress;
-    // Deposit address comes from backend config, not wallet
+    
+    // Update withdraw address display
+    updateWithdrawAddressDisplay();
     
     console.log('Wallet connected:', friendlyAddress);
 }
@@ -161,9 +163,27 @@ function onWalletDisconnected() {
     
     document.getElementById('wallet-info').classList.add('hidden');
     document.getElementById('wallet-address').textContent = '—';
-    // Deposit address stays from config
+    
+    // Update withdraw address display
+    updateWithdrawAddressDisplay();
     
     console.log('Wallet disconnected');
+}
+
+// Update withdraw destination address display
+function updateWithdrawAddressDisplay() {
+    const addressText = document.getElementById('withdraw-address-text');
+    const addressDisplay = document.getElementById('withdraw-address-display');
+    
+    if (currentWalletAddress) {
+        addressText.textContent = formatAddress(currentWalletAddress);
+        addressText.title = currentWalletAddress; // Full address on hover
+        addressDisplay.classList.add('withdraw__address--connected');
+    } else {
+        addressText.textContent = 'Connect wallet first';
+        addressText.title = '';
+        addressDisplay.classList.remove('withdraw__address--connected');
+    }
 }
 
 function formatAddress(address) {
@@ -535,15 +555,15 @@ async function pollDepositStatus(depositId, maxAttempts = 30, intervalMs = 2000)
 // === Withdraw (TON only) ===
 async function handleWithdraw() {
     const amount = document.getElementById('withdraw-amount').value;
-    const toAddress = document.getElementById('withdraw-address').value;
     
     if (!amount || parseFloat(amount) <= 0) {
         alert('Please enter a valid amount');
         return;
     }
     
-    if (!toAddress) {
-        alert('Please enter a destination address');
+    // Use connected wallet address
+    if (!currentWalletAddress) {
+        alert('Please connect your wallet first');
         return;
     }
     
@@ -556,13 +576,12 @@ async function handleWithdraw() {
             body: JSON.stringify({
                 asset: 'TON',
                 amount: amountNano,
-                toAddress: toAddress
+                toAddress: currentWalletAddress
             })
         });
         
         alert('Withdraw request created!');
         document.getElementById('withdraw-amount').value = '';
-        document.getElementById('withdraw-address').value = '';
         await loadState();
         
     } catch (error) {

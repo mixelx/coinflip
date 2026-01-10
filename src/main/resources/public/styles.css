@@ -563,6 +563,31 @@ body {
     gap: 6px;
 }
 
+.withdraw__address {
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.withdraw__address--connected {
+    border-style: solid;
+    border-color: var(--accent-primary);
+    background: rgba(0, 212, 170, 0.08);
+}
+
+.withdraw__address--connected .withdraw__address-text {
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.withdraw__address-text {
+    cursor: default;
+}
+
 .withdraw__history {
     margin-top: 8px;
 }
